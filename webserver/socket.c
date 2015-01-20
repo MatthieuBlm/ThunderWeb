@@ -2,7 +2,7 @@
 
 int creer_serveur(int port){
 
-	// Initialisation de la socket
+	// Initialisation de la socket serveur
 
 	int fd_socket;
 	fd_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -25,7 +25,16 @@ int creer_serveur(int port){
 		return -1;
 	}
 
-	printf("Test\n");
+	// Initialisation socket client
+
+	int socket_client ;
+	socket_client = accept(fd_socket, NULL, NULL);
+	if (socket_client == -1) {
+		perror("accept");
+	}
+
+	const char * message_bienvenue = "----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n" ;
+	write (socket_client, message_bienvenue, strlen(message_bienvenue));
 
 	return fd_socket;
 }
