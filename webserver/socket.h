@@ -35,8 +35,10 @@ La fonction retourne -1 en cas d'erreur ou le descripteur de la
 socket créée.
 */
 
-int creer_socket_client();
+int creer_socket_client(int socket_serveur);
 
+void traitement_client(int socket_client);
+void liaison_interface_socket();
 
 void initialiser_signaux();
 #endif
