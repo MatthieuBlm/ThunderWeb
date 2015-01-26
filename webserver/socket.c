@@ -36,13 +36,16 @@ int creer_serveur(int port){
 
 			// Séquence de renvoi des informations du client vers le client
 			traitement_client(socket_client);
+			exit(0);
+		} else {
+			close(socket_client);
 		}
 	}
 
 	return socket_serveur;
 }
 
-int creer_socket_serveur(){
+int creer_socket_serveur(void){
 	int socket_serveur;
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
 	if(socket_serveur == -1) {
@@ -62,20 +65,35 @@ int creer_socket_client(int socket_serveur){
 	return socket_client;
 }
 
-void initialiser_signaux(){
+void initialiser_signaux(void){
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 		perror("signal");
 	}
+
+	struct sigaction sa;
+	sa.sa_handler = traitement_signal;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+
+	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
+		perror("sigaction(SIGCHLD)");
+	}
 }
+
+void traitement_signal(int sig){
+	if(sig == SIGCHLD){
+		waitpid(-1, 0, WNOHANG);
+	}
+}
+
 
 void traitement_client(int socket_client){
 	char message[256];
 	int message_length;
-	while(1){
-		message_length = read(socket_client, &message, sizeof(message));
+	while((message_length = read(socket_client, &message, sizeof(message))) != 0){
 		if(message_length == -1){
 			perror("read");
-			exit(1);
+			exit(1);  
 		} else {
 			write(socket_client, message, message_length);
 		}

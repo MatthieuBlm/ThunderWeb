@@ -5,6 +5,7 @@
 #include <netinet/ip.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
@@ -27,7 +28,7 @@ La fonction retourne -1 en cas d'erreur ou le descripteur de la
 socket créée.
 */
 
-int creer_socket_serveur();
+int creer_socket_serveur(void);
 
 /** Crée une socket pour le client.
 
@@ -38,7 +39,8 @@ socket créée.
 int creer_socket_client(int socket_serveur);
 
 void traitement_client(int socket_client);
-void liaison_interface_socket();
+void liaison_interface_socket(int port, int socket_serveur);
 
-void initialiser_signaux();
+void initialiser_signaux(void);
+void traitement_signal(int sig);
 #endif
