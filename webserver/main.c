@@ -1,7 +1,7 @@
 #include "socket.h"
 int main ()
 {
-	creer_serveur(8000);
+	creer_serveur(8080);
 	return 0;
 }
 
