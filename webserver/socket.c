@@ -34,6 +34,14 @@ int creer_serveur(int port){
 		exit(1);
 	}
 
+	// Paramétrage pour réutiliser l'interface directement après l'extinction du serveur
+
+	int optval = 1;
+	if(setsockopt(socket_serveur, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) == -1){
+		perror("Impossible de mettre le paramètre SO_REUSEADDR");
+		exit(1);
+	}
+
 	// Envoi du message de bienvenue
 
 	const char * message_bienvenue = "----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n" ;
