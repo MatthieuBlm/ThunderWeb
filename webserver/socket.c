@@ -8,7 +8,7 @@ int creer_serveur(int port){
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
 	if(socket_serveur == -1) {
 		perror("socket_serveur");
-		return -1;
+		exit(1);
 	}
 
 	struct sockaddr_in saddr;
@@ -17,12 +17,12 @@ int creer_serveur(int port){
 	saddr.sin_addr.s_addr = INADDR_ANY; /* écoute sur toutes les interfaces */
 	if(bind(socket_serveur, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
 		perror("bind socket_serveur");
-		return -1;
+		exit(1);
 	}
 
 	if (listen(socket_serveur, 10) == -1){
 		perror("listen socket_serveur");
-		return -1;
+		exit(1);
 	}
 
 	// Initialisation socket client
@@ -31,6 +31,7 @@ int creer_serveur(int port){
 	socket_client = accept(socket_serveur, NULL, NULL);
 	if (socket_client == -1) {
 		perror("accept");
+		exit(1);
 	}
 
 	// Envoi du message de bienvenue
@@ -46,6 +47,7 @@ int creer_serveur(int port){
 		message_length = read(socket_client, &message, sizeof(message));
 		if(message_length == -1){
 			perror("read");
+			exit(1);
 		} else {
 			write(socket_client, message, message_length);
 		}
