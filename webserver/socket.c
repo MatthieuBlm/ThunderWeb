@@ -2,15 +2,15 @@
 
 int creer_serveur(int port){
 
+	// Initialisation des signaux systèmes
+
+	initialiser_signaux();
+
 	// Initialisation de la socket serveur
 
-	int socket_serveur;
-	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
-	if(socket_serveur == -1) {
-		perror("socket_serveur");
-		exit(1);
-	}
+	int socket_serveur = creer_socket_serveur();
 
+	// Liaison entre l'interface et la socket
 	struct sockaddr_in saddr;
 	saddr.sin_family = AF_INET; /* Socket ipv4 */
 	saddr.sin_port = htons(port); /* Port d'écoute */
@@ -27,13 +27,8 @@ int creer_serveur(int port){
 
 	// Initialisation socket client
 
-	int socket_client;
-	socket_client = accept(socket_serveur, NULL, NULL);
-	if (socket_client == -1) {
-		perror("accept");
-		exit(1);
-	}
-
+	int socket_client = creer_socket_client(socket_serveur);
+	
 	// Paramétrage pour réutiliser l'interface directement après l'extinction du serveur
 
 	int optval = 1;
@@ -62,4 +57,30 @@ int creer_serveur(int port){
 	}
 
 	return socket_serveur;
+}
+
+int creer_socket_serveur(){
+	int socket_serveur;
+	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
+	if(socket_serveur == -1) {
+		perror("socket_serveur");
+		exit(1);
+	}
+	return socket_serveur;
+}
+
+int creer_socket_client(int socket_serveur){
+	int socket_client;
+	socket_client = accept(socket_serveur, NULL, NULL);
+	if (socket_client == -1) {
+		perror("accept");
+		exit(1);
+	}
+	return socket_client;
+}
+
+void initialiser_signaux(){
+	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR){
+		perror("signal");
+	}
 }
