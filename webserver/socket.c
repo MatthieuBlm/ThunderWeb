@@ -36,6 +36,7 @@ int creer_serveur(int port){
 	// Envoi du message de bienvenue
 
 	const char * message_bienvenue = "----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n" ;
+	sleep(1);
 	write(socket_client, message_bienvenue, strlen(message_bienvenue));
 
 	// Séquence de renvoi des informations du client vers le client
