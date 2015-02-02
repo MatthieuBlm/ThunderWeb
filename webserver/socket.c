@@ -43,6 +43,7 @@ int creer_socket_client(int socket_serveur){
 void initialiser_signaux(void){
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 		perror("signal");
+		exit(1);
 	}
 
 	struct sigaction sa;
@@ -52,6 +53,7 @@ void initialiser_signaux(void){
 
 	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
 		perror("sigaction(SIGCHLD)");
+		exit(1);
 	}
 }
 
@@ -63,6 +65,10 @@ void traitement_signal(int sig){
 
 
 void traitement_client(int socket_client){
+	/*
+	
+	----------------------------------- ANCIENNE VERSION (sans fgets) -----------------------------------
+
 	char message[256];
 	int message_length;
 	while((message_length = read(socket_client, &message, sizeof(message))) != 0){
@@ -73,6 +79,24 @@ void traitement_client(int socket_client){
 			write(socket_client, message, message_length);
 		}
 	}
+
+	*/
+
+	FILE * f = fdopen(socket_client, "w+");
+	char * message = malloc(8192);
+	if(f == NULL){
+		perror("fdopen");
+		exit(1);
+	}
+
+	char * res;
+	
+
+	while((res = fgets(message, 8192, f)) != NULL){
+		fprintf(f, "<ThunderWeb> %s\n", message);
+	}
+
+	free(message);
 }
 
 void liaison_interface_socket(int port, int socket_serveur){
