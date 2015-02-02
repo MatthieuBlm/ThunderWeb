@@ -40,6 +40,9 @@ int creer_socket_client(int socket_serveur);
 
 void traitement_client(int socket_client);
 void liaison_interface_socket(int port, int socket_serveur);
+int traitement_requete(const char * req);
+
+char** split(const char* chaine, char* delim,int vide);
 
 void initialiser_signaux(void);
 void traitement_signal(int sig);
