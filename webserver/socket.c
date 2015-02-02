@@ -8,14 +8,7 @@ int creer_serveur(int port){
 	int socket_serveur = creer_socket_serveur();
 
 	// Liaison entre l'interface et la socket
-	liaison_interface_socket(port, socket_serveur);
-
-	// Paramétrage pour réutiliser l'interface directement après l'extinction du serveur
-	int optval = 1;
-	if(setsockopt(socket_serveur, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) == -1){
-		perror("Impossible de mettre le paramètre SO_REUSEADDR");
-		exit(1);
-	}
+	liaison_interface_socket(port, socket_serveur);	
 
 	return socket_serveur;
 }
@@ -88,23 +81,24 @@ void traitement_client(int socket_client){
 		perror("fdopen");
 		exit(1);
 	}
-	
-	int first_line = 1;
+
+	int nbLine = 0;
 	while(fgets(message, 8192, f) != NULL){
 		//fprintf(f, "<ThunderWeb> %s\n", message);
 		printf("[Reçu] %s", message);
-		if(first_line){
-			if(traitement_requete(message) == -1){
+		if(nbLine == 0){
+			if(traitement_first_line(message) == -1){
 				break;
 			}
-			first_line = 0;
 		}
+
+		nbLine++;
 	}
 
 	free(message);
 }
 
-int traitement_requete(const char * req){
+int traitement_first_line(const char * req){
 	char ** tab = split(req, " ", 0);
 	int i;
 	for(i = 0; tab[i] != NULL; ++i) {
@@ -115,8 +109,13 @@ int traitement_requete(const char * req){
 		free(tab);
 		return -1;
 	}
-	if(strncmp(tab[0], "GET", 3) != 0){
+	if(strcmp(tab[0], "GET") != 0){
 		printf("[Warning] Requête invalide : le premier paramètre est différent de GET\n");
+		free(tab);
+		return -1;
+	}
+	if(strncmp(tab[2], "HTTP/1.1", 8) != 0 && strncmp(tab[2], "HTTP/1.0", 8) != 0){
+		printf("[Warning] Requête invalide : Version invalide\n");
 		free(tab);
 		return -1;
 	}

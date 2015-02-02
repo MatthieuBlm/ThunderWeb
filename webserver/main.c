@@ -3,6 +3,13 @@ int main ()
 {
 	int socket_serveur = creer_serveur(8080);
 
+	// Paramétrage pour réutiliser l'interface directement après l'extinction du serveur
+	int optval = 1;
+	if(setsockopt(socket_serveur, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) == -1){
+		perror("Impossible de mettre le paramètre SO_REUSEADDR");
+		exit(1);
+	}
+
 	while(1){
 		// Initialisation socket client
 		int socket_client = creer_socket_client(socket_serveur);
