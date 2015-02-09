@@ -1,14 +1,11 @@
 #include "socket.h"
 int main ()
 {
+	
+	printf("[Info] Démarrage du serveur\n");
 	int socket_serveur = creer_serveur(8080);
 
-	// Paramétrage pour réutiliser l'interface directement après l'extinction du serveur
-	int optval = 1;
-	if(setsockopt(socket_serveur, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) == -1){
-		perror("Impossible de mettre le paramètre SO_REUSEADDR");
-		exit(1);
-	}
+	printf("[OK] Serveur démarré\n--------------------\n");
 
 	while(1){
 		// Initialisation socket client

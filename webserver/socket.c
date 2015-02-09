@@ -7,6 +7,14 @@ int creer_serveur(int port){
 	// Initialisation de la socket serveur
 	int socket_serveur = creer_socket_serveur();
 
+	printf("[Info] Mise en place du paramétrage SO_REUSEADDR\n");
+	// Paramétrage pour réutiliser l'interface directement après l'extinction du serveur
+	int optval = 1;
+	if(setsockopt(socket_serveur, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) == -1){
+		perror("Impossible de mettre le paramètre SO_REUSEADDR");
+		exit(1);
+	}
+
 	// Liaison entre l'interface et la socket
 	liaison_interface_socket(port, socket_serveur);	
 
@@ -14,12 +22,14 @@ int creer_serveur(int port){
 }
 
 int creer_socket_serveur(void){
+	printf("[Info] Création de la socket serveur\n");
 	int socket_serveur;
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
 	if(socket_serveur == -1) {
 		perror("socket_serveur");
 		exit(1);
 	}
+	printf("[Info] Socket serveur créée\n");
 	return socket_serveur;
 }
 
@@ -34,6 +44,7 @@ int creer_socket_client(int socket_serveur){
 }
 
 void initialiser_signaux(void){
+	printf("[Info] Initialisation des signaux\n");
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 		perror("signal");
 		exit(1);
@@ -48,6 +59,7 @@ void initialiser_signaux(void){
 		perror("sigaction(SIGCHLD)");
 		exit(1);
 	}
+	printf("[Info] Signaux initialisés\n");
 }
 
 void traitement_signal(int sig){
@@ -58,72 +70,85 @@ void traitement_signal(int sig){
 
 
 void traitement_client(int socket_client){
-	/*
-	
-	----------------------------------- ANCIENNE VERSION (sans fgets) -----------------------------------
-
-	char message[256];
-	int message_length;
-	while((message_length = read(socket_client, &message, sizeof(message))) != 0){
-		if(message_length == -1){
-			perror("read");
-			exit(1);  
-		} else {
-			write(socket_client, message, message_length);
-		}
-	}
-
-	*/
-
 	FILE * f = fdopen(socket_client, "w+");
-	char * message = malloc(8192);
+	char * message = malloc(512);
+	char * lignesMessage = malloc(8192);
+
 	if(f == NULL){
 		perror("fdopen");
 		exit(1);
 	}
 
-	int nbLine = 0;
-	while(fgets(message, 8192, f) != NULL){
-		//fprintf(f, "<ThunderWeb> %s\n", message);
+	// On capte les messages reçus
+	while(fgets(message, 512, f) != NULL){
+		// On affiche le message
 		printf("[Reçu] %s", message);
-		if(nbLine == 0){
-			if(traitement_first_line(message) == -1){
-				break;
-			}
+
+		// Si la ligne est vide, on sort de la boucle
+		if(strcmp(message, "\r\n") == 0){
+			break;
 		}
 
-		nbLine++;
+		// On le concatène à la suite des autres messages précédent, en attandant la fin de la requête
+		strcat(lignesMessage, message);
 	}
 
+	// On traite l'information reçue
+	printf("[Info] Traitement de la requête\n");
+
+	// On découpe les chaînes contaténées par des \r\n
+	char ** datas = split(lignesMessage, "\r\n", 0);
+
+	// On traite la premère ligne de la requête (par ex GET / HTTP/1.1)
+	if(traitement_first_line(datas[0]) == -1){
+		free(message);
+		free(lignesMessage);
+		return;
+	}
+
+	printf("[Info] Traitement terminé\n--------------------\n");
+
+	// On libère la mémoire utilisée
 	free(message);
+	free(lignesMessage);
 }
 
 int traitement_first_line(const char * req){
+	// On sépare les 3 parties de la ligne (délémitées par des espaces)
 	char ** tab = split(req, " ", 0);
-	int i;
-	for(i = 0; tab[i] != NULL; ++i) {
-		//printf("%d : %s\n", i, tab[i]);
+	int i = 0;
+
+	// Tant que nous sommes pas à la fin de la ligne, on incrémente un compteur
+	while(tab[i] != NULL) {
+		i++;
 	}
+
+	// On teste si la ligne a bien 3 parties distinctes
 	if(i != 3){
 		printf("[Warning] Requête invalide : nombre de mots invalide\n");
 		free(tab);
 		return -1;
 	}
+
+	// On teste si le premier mot est GET
 	if(strcmp(tab[0], "GET") != 0){
 		printf("[Warning] Requête invalide : le premier paramètre est différent de GET\n");
 		free(tab);
 		return -1;
 	}
+
+	// On teste si la version est bien HTTP/1.0 ou HTTP/1.1
 	if(strncmp(tab[2], "HTTP/1.1", 8) != 0 && strncmp(tab[2], "HTTP/1.0", 8) != 0){
 		printf("[Warning] Requête invalide : Version invalide\n");
 		free(tab);
 		return -1;
 	}
+
 	free(tab);
 	return 0;
 }
 
-	
+
 
 char** split(const char * chaine, char* delim,int vide){
 
@@ -184,6 +209,7 @@ char** split(const char * chaine, char* delim,int vide){
 
 
 void liaison_interface_socket(int port, int socket_serveur){
+	printf("[Info] Liaison entre les interfaces et la socket\n");
 	struct sockaddr_in saddr;
 	saddr.sin_family = AF_INET; /* Socket ipv4 */
 	saddr.sin_port = htons(port); /* Port d'écoute */
@@ -197,4 +223,5 @@ void liaison_interface_socket(int port, int socket_serveur){
 		perror("listen socket_serveur");
 		exit(1);
 	}
+	printf("[Info] Liaison terminée\n");
 }
