@@ -85,7 +85,7 @@ void traitement_client(int socket_client){
 		printf("[Reçu] %s", message);
 
 		// Si la ligne est vide, on sort de la boucle
-		if(strcmp(message, "\r\n") == 0){
+		if(strcmp(message, "\r\n") == 0 || strcmp(message, "\n") == 0){
 			break;
 		}
 
@@ -101,10 +101,15 @@ void traitement_client(int socket_client){
 
 	// On traite la premère ligne de la requête (par ex GET / HTTP/1.1)
 	if(traitement_first_line(datas[0]) == -1){
+		fprintf(f, "HTTP/1.1 400 Bad request\nConnection: close.\nContent-Length: %d\n\n400 Bad request\n", (int) strlen(lignesMessage));
+		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
 		free(message);
 		free(lignesMessage);
 		return;
 	}
+
+	// Message de bienvenue
+	fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(lignesMessage));
 
 	printf("[Info] Traitement terminé\n--------------------\n");
 
@@ -147,8 +152,6 @@ int traitement_first_line(const char * req){
 	free(tab);
 	return 0;
 }
-
-
 
 char** split(const char * chaine, char* delim,int vide){
 
@@ -204,9 +207,6 @@ char** split(const char * chaine, char* delim,int vide){
 
     return tab;
 }
-
-
-
 
 void liaison_interface_socket(int port, int socket_serveur){
 	printf("[Info] Liaison entre les interfaces et la socket\n");

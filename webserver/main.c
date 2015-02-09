@@ -1,7 +1,7 @@
 #include "socket.h"
 int main ()
 {
-	
+
 	printf("[Info] Démarrage du serveur\n");
 	int socket_serveur = creer_serveur(8080);
 
@@ -16,11 +16,7 @@ int main ()
 			exit(1);
 		} else if(fd_client_fork == 0) {
 			// Dans le processus fils
-
-			// Envoi du message de bienvenue
-			const char * message_bienvenue = "----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n" ;
 			sleep(1);
-			write(socket_client, message_bienvenue, strlen(message_bienvenue));
 
 			// Séquence de renvoi des informations du client vers le client
 			traitement_client(socket_client);
