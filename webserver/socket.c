@@ -98,27 +98,36 @@ void traitement_client(int socket_client){
 
 	// On découpe les chaînes contaténées par des \r\n
 	char ** datas = split(lignesMessage, "\r\n", 0);
+	char * ressource = traitement_first_line(datas[0]);
 
 	// On traite la premère ligne de la requête (par ex GET / HTTP/1.1)
-	if(traitement_first_line(datas[0]) == -1){
+	if(ressource == NULL){
 		fprintf(f, "HTTP/1.1 400 Bad request\nConnection: close.\nContent-Length: %d\n\n400 Bad request\n", (int) strlen(lignesMessage));
 		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
+		free(message);
+		free(lignesMessage);
+		return;
+	} else if (strcmp(ressource, "/") == 0){
+		fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(lignesMessage));
+	} else {
+		fprintf(f, "HTTP/1.1 404 Not found\nContent-Length: %d\n\n404 Not found\n", (int) strlen(lignesMessage));
+		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
 		free(message);
 		free(lignesMessage);
 		return;
 	}
 
 	// Message de bienvenue
-	fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(lignesMessage));
 
 	printf("[Info] Traitement terminé\n--------------------\n");
 
 	// On libère la mémoire utilisée
+	free(ressource);
 	free(message);
 	free(lignesMessage);
 }
 
-int traitement_first_line(const char * req){
+char * traitement_first_line(const char * req){
 	// On sépare les 3 parties de la ligne (délémitées par des espaces)
 	char ** tab = split(req, " ", 0);
 	int i = 0;
@@ -132,25 +141,27 @@ int traitement_first_line(const char * req){
 	if(i != 3){
 		printf("[Warning] Requête invalide : nombre de mots invalide\n");
 		free(tab);
-		return -1;
+		return NULL;
 	}
 
 	// On teste si le premier mot est GET
 	if(strcmp(tab[0], "GET") != 0){
 		printf("[Warning] Requête invalide : le premier paramètre est différent de GET\n");
 		free(tab);
-		return -1;
+		return NULL;
 	}
 
 	// On teste si la version est bien HTTP/1.0 ou HTTP/1.1
 	if(strncmp(tab[2], "HTTP/1.1", 8) != 0 && strncmp(tab[2], "HTTP/1.0", 8) != 0){
 		printf("[Warning] Requête invalide : Version invalide\n");
 		free(tab);
-		return -1;
+		return NULL;
 	}
 
+	char * ressource = tab[1];
+
 	free(tab);
-	return 0;
+	return ressource;
 }
 
 char** split(const char * chaine, char* delim,int vide){

@@ -40,7 +40,7 @@ int creer_socket_client(int socket_serveur);
 
 void traitement_client(int socket_client);
 void liaison_interface_socket(int port, int socket_serveur);
-int traitement_first_line(const char * req);
+char * traitement_first_line(const char * req);
 
 char** split(const char* chaine, char* delim,int vide);
 
