@@ -60,4 +60,7 @@ char** split(const char* chaine, char* delim,int vide);
 
 void initialiser_signaux(void);
 void traitement_signal(int sig);
+
+char * fgets_or_exit(char * buffer, int size, FILE *stream);
+void skip_headers(FILE *client);
 #endif

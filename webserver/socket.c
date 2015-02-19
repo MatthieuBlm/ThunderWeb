@@ -72,7 +72,6 @@ void traitement_signal(int sig){
 void traitement_client(int socket_client){
 	FILE * f = fdopen(socket_client, "w+");
 	char * message = malloc(512);
-	char * lignesMessage = malloc(8192);
 
 	if(f == NULL){
 		perror("fdopen");
@@ -80,7 +79,7 @@ void traitement_client(int socket_client){
 	}
 
 	// On capte les messages reçus
-	while(fgets_or_exit(message, 512, f) != NULL){
+	/*while(fgets_or_exit(message, 512, f) != NULL){
 		// On affiche le message
 		printf("[Reçu] %s", message);
 
@@ -90,18 +89,18 @@ void traitement_client(int socket_client){
 		}
 
 		// On le concatène à la suite des autres messages précédent, en attandant la fin de la requête
-		strcat(lignesMessage, message);
-	}
+	}*/
+
+	char * firstLine = fgets_or_exit(message, 512, f);
+	printf("[Reçu] %s", firstLine);
+	skip_headers(f);
+
 
 	// On traite l'information reçue
 	printf("[Info] Traitement de la requête\n");
 
-	// On découpe les chaînes contaténées par des \r\n
-	char ** datas = split(lignesMessage, "\r\n", 0);
-	//char * ressource = traitement_first_line(datas[0]);
-
 	http_request * req = malloc(128);
-	int ressource = parse_http_request(datas[0], req);
+	int ressource = parse_http_request(firstLine, req);
 
 	printf("Contenu http_request : \n");
 	printf("Méthode : %d\n", req->method);
@@ -111,20 +110,20 @@ void traitement_client(int socket_client){
 
 	// On traite la premère ligne de la requête (par ex GET / HTTP/1.1)
 	if(ressource == 0){
-		fprintf(f, "HTTP/1.1 400 Bad request\nConnection: close.\nContent-Length: %d\n\n400 Bad request\n", (int) strlen(lignesMessage));
+		fprintf(f, "HTTP/1.1 400 Bad request\nConnection: close.\nContent-Length: %d\n\n400 Bad request\n", (int) strlen(firstLine));
 		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
 		free(message);
-		free(lignesMessage);
+		free(req);
 		return;
 	} 
 
 	if(strcmp(req->url,"/") == 0) {
-		fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(lignesMessage));
+		fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(firstLine));
 	} else {
-		fprintf(f, "HTTP/1.1 404 Not found\nContent-Length: %d\n\n404 Not found\n", (int) strlen(lignesMessage));
+		fprintf(f, "HTTP/1.1 404 Not found\nContent-Length: %d\n\n404 Not found\n", (int) strlen(firstLine));
 		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
 		free(message);
-		free(lignesMessage);
+		free(req);
 		return;
 	}
 
@@ -135,7 +134,6 @@ void traitement_client(int socket_client){
 	// On libère la mémoire utilisée
 	free(req);
 	free(message);
-	free(lignesMessage);
 }
 
 /*
@@ -304,4 +302,16 @@ char * fgets_or_exit(char * buffer, int size, FILE *stream){
 	}else{
 		return buffer;
 	}
+}
+
+void skip_headers(FILE *client){
+	char * message = malloc(512);
+	while(fgets_or_exit(message, 512, client) != NULL){
+		printf("[Reçu] %s", message);
+
+		if(strcmp(message, "\r\n") == 0 || strcmp(message, "\n") == 0){
+			break;
+		}
+	}
+	free(message);
 }
