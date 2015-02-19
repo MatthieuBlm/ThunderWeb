@@ -98,16 +98,27 @@ void traitement_client(int socket_client){
 
 	// On découpe les chaînes contaténées par des \r\n
 	char ** datas = split(lignesMessage, "\r\n", 0);
-	char * ressource = traitement_first_line(datas[0]);
+	//char * ressource = traitement_first_line(datas[0]);
+
+	http_request * req = malloc(128);
+	int ressource = parse_http_request(datas[0], req);
+
+	printf("Contenu http_request : \n");
+	printf("Méthode : %d\n", req->method);
+	printf("URL : %s\n", req->url);
+	printf("Version mineure : %d\n", req->minor_version);
+	printf("Version majeure : %d\n", req->major_version);
 
 	// On traite la premère ligne de la requête (par ex GET / HTTP/1.1)
-	if(ressource == NULL){
+	if(ressource == 0){
 		fprintf(f, "HTTP/1.1 400 Bad request\nConnection: close.\nContent-Length: %d\n\n400 Bad request\n", (int) strlen(lignesMessage));
 		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
 		free(message);
 		free(lignesMessage);
 		return;
-	} else if (strcmp(ressource, "/") == 0){
+	} 
+
+	if(strcmp(req->url,"/") == 0) {
 		fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(lignesMessage));
 	} else {
 		fprintf(f, "HTTP/1.1 404 Not found\nContent-Length: %d\n\n404 Not found\n", (int) strlen(lignesMessage));
@@ -117,17 +128,20 @@ void traitement_client(int socket_client){
 		return;
 	}
 
-	// Message de bienvenue
+	
 
 	printf("[Info] Traitement terminé\n--------------------\n");
 
 	// On libère la mémoire utilisée
-	free(ressource);
+	free(req);
 	free(message);
 	free(lignesMessage);
 }
 
+/*
+
 char * traitement_first_line(const char * req){
+
 	// On sépare les 3 parties de la ligne (délémitées par des espaces)
 	char ** tab = split(req, " ", 0);
 	int i = 0;
@@ -162,6 +176,53 @@ char * traitement_first_line(const char * req){
 
 	free(tab);
 	return ressource;
+}
+
+*/
+
+int parse_http_request ( const char * request_line , http_request * request ){
+	// On sépare les 3 parties de la ligne (délémitées par des espaces)
+	char ** tab = split(request_line, " ", 0);
+	int i = 0;
+
+	// Tant que nous sommes pas à la fin de la ligne, on incrémente un compteur
+	while(tab[i] != NULL) {
+		i++;
+	}
+
+	// On teste si la ligne a bien 3 parties distinctes
+	if(i != 3){
+		printf("[Warning] Requête invalide : nombre de mots invalide\n");
+		free(tab);
+		return 0;
+	}
+
+	request->url = tab[1];
+
+	// On teste si le premier mot est GET
+	if(strcmp(tab[0], "GET") != 0){
+		printf("[Warning] Requête invalide : le premier paramètre est différent de GET\n");
+		request->method = HTTP_UNSUPPORTED;
+		free(tab);
+		return 0;
+	}
+
+	request->method = HTTP_GET;
+
+	// On teste si la version est bien HTTP/1.0 ou HTTP/1.1
+	request->major_version = 1;
+	if(strncmp(tab[2], "HTTP/1.1", 8) == 0 ){
+		request->minor_version = 1;
+	} else if(strncmp(tab[2], "HTTP/1.0", 8) == 0){
+		request->minor_version = 0;
+	} else {
+		printf("[Warning] Requête invalide : Version invalide\n");
+		free(tab);
+		return 0;
+	}
+
+	free(tab);
+	return 1;
 }
 
 char** split(const char * chaine, char* delim,int vide){
