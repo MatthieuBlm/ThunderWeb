@@ -78,19 +78,6 @@ void traitement_client(int socket_client){
 		exit(1);
 	}
 
-	// On capte les messages reçus
-	/*while(fgets_or_exit(message, 512, f) != NULL){
-		// On affiche le message
-		printf("[Reçu] %s", message);
-
-		// Si la ligne est vide, on sort de la boucle
-		if(strcmp(message, "\r\n") == 0 || strcmp(message, "\n") == 0){
-			break;
-		}
-
-		// On le concatène à la suite des autres messages précédent, en attandant la fin de la requête
-	}*/
-
 	char * firstLine = fgets_or_exit(message, 512, f);
 	printf("[Reçu] %s", firstLine);
 	skip_headers(f);
@@ -102,15 +89,8 @@ void traitement_client(int socket_client){
 	http_request * req = malloc(128);
 	int ressource = parse_http_request(firstLine, req);
 
-	printf("Contenu http_request : \n");
-	printf("Méthode : %d\n", req->method);
-	printf("URL : %s\n", req->url);
-	printf("Version mineure : %d\n", req->minor_version);
-	printf("Version majeure : %d\n", req->major_version);
-
-	// On traite la premère ligne de la requête (par ex GET / HTTP/1.1)
 	if(ressource == 0){
-		fprintf(f, "HTTP/1.1 400 Bad request\nConnection: close.\nContent-Length: %d\n\n400 Bad request\n", (int) strlen(firstLine));
+		send_response(f, 400, "Bad request", "Bad request\r\n");
 		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
 		free(message);
 		free(req);
@@ -118,16 +98,15 @@ void traitement_client(int socket_client){
 	} 
 
 	if(strcmp(req->url,"/") == 0) {
-		fprintf(f, "HTTP/1.1 200 OK\nContent-Length: %d\n\n----- THUNDERWEB -----\nBienvenue sur notre serveur Web.\nCeci est notre message de bienvenue !\nBonne visite ;)\n", (int) strlen(firstLine));
+		char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
+		send_response(f, 200, "OK", motd);
 	} else {
-		fprintf(f, "HTTP/1.1 404 Not found\nContent-Length: %d\n\n404 Not found\n", (int) strlen(firstLine));
+		send_response(f, 404, "Not found", "Not found\r\n");
 		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
 		free(message);
 		free(req);
 		return;
 	}
-
-	
 
 	printf("[Info] Traitement terminé\n--------------------\n");
 
@@ -313,5 +292,37 @@ void skip_headers(FILE *client){
 			break;
 		}
 	}
+	free(message);
+}
+
+void send_status(FILE * client , int code , const char * reason_phrase){
+	char * message = malloc(256);
+	char charCode[3];
+	sprintf(charCode, "%d", code);
+	message = strcat(message, "HTTP/1.1 ");
+	message = strcat(message, charCode);
+	message = strcat(message, " ");
+	message = strcat(message, reason_phrase);
+	message = strcat(message, "\n");
+
+	fprintf(client, "%s", message);
+	free(message);
+}
+
+void send_response(FILE * client , int code , const char * reason_phrase, const char * message_body){
+	send_status(client, code, reason_phrase);
+	char * message = malloc(256);
+
+	int taille = strlen(message_body);
+	char tailleBody[1024];
+	sprintf(tailleBody, "%d", taille);
+
+	message = strcat(message, "Content-Type : text\\HTML\n");
+	message = strcat(message, "Content-Length : ");
+	message = strcat(message, tailleBody);
+	message = strcat(message, "\n\n");
+	message = strcat(message, message_body);
+
+	fprintf(client, "%s", message);
 	free(message);
 }
