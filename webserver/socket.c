@@ -80,7 +80,7 @@ void traitement_client(int socket_client){
 	}
 
 	// On capte les messages reçus
-	while(fgets(message, 512, f) != NULL){
+	while(fgets_or_exit(message, 512, f) != NULL){
 		// On affiche le message
 		printf("[Reçu] %s", message);
 
@@ -296,4 +296,12 @@ void liaison_interface_socket(int port, int socket_serveur){
 		exit(1);
 	}
 	printf("[Info] Liaison terminée\n");
+}
+
+char * fgets_or_exit(char * buffer, int size, FILE *stream){
+	if(fgets(buffer, size, stream) == NULL){
+		exit(1);
+	}else{
+		return buffer;
+	}
 }
