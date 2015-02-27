@@ -71,12 +71,13 @@ void traitement_signal(int sig){
 
 void traitement_client(int socket_client){
 	FILE * f = fdopen(socket_client, "w+");
-	char * message = malloc(512);
 
 	if(f == NULL){
 		perror("fdopen");
 		exit(1);
 	}
+
+	char * message = malloc(512);
 
 	char * firstLine = fgets_or_exit(message, 512, f);
 	printf("[Reçu] %s", firstLine);
@@ -97,15 +98,18 @@ void traitement_client(int socket_client){
 		return;
 	} 
 
-	if(strcmp(req->url,"/") == 0) {
-		char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
-		send_response(f, 200, "OK", motd);
-	} else {
-		send_response(f, 404, "Not found", "Not found\r\n");
+	int fdRequestedFile = check_and_open(rewrite_url(req->url), "/home/infoetu/hembertr/public_html");
+
+	if(fdRequestedFile == -1){
+		send_response(f, 404, "Not found", "404 Not found\r\n");
 		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
 		free(message);
 		free(req);
 		return;
+	} else {
+		char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
+		
+		send_response(f, 200, "OK", motd);
 	}
 
 	printf("[Info] Traitement terminé\n--------------------\n");
@@ -114,48 +118,6 @@ void traitement_client(int socket_client){
 	free(req);
 	free(message);
 }
-
-/*
-
-char * traitement_first_line(const char * req){
-
-	// On sépare les 3 parties de la ligne (délémitées par des espaces)
-	char ** tab = split(req, " ", 0);
-	int i = 0;
-
-	// Tant que nous sommes pas à la fin de la ligne, on incrémente un compteur
-	while(tab[i] != NULL) {
-		i++;
-	}
-
-	// On teste si la ligne a bien 3 parties distinctes
-	if(i != 3){
-		printf("[Warning] Requête invalide : nombre de mots invalide\n");
-		free(tab);
-		return NULL;
-	}
-
-	// On teste si le premier mot est GET
-	if(strcmp(tab[0], "GET") != 0){
-		printf("[Warning] Requête invalide : le premier paramètre est différent de GET\n");
-		free(tab);
-		return NULL;
-	}
-
-	// On teste si la version est bien HTTP/1.0 ou HTTP/1.1
-	if(strncmp(tab[2], "HTTP/1.1", 8) != 0 && strncmp(tab[2], "HTTP/1.0", 8) != 0){
-		printf("[Warning] Requête invalide : Version invalide\n");
-		free(tab);
-		return NULL;
-	}
-
-	char * ressource = tab[1];
-
-	free(tab);
-	return ressource;
-}
-
-*/
 
 int parse_http_request ( const char * request_line , http_request * request ){
 	// On sépare les 3 parties de la ligne (délémitées par des espaces)
@@ -296,33 +258,131 @@ void skip_headers(FILE *client){
 }
 
 void send_status(FILE * client , int code , const char * reason_phrase){
-	char * message = malloc(256);
+	char * status = malloc(255);
 	char charCode[3];
 	sprintf(charCode, "%d", code);
-	message = strcat(message, "HTTP/1.1 ");
-	message = strcat(message, charCode);
-	message = strcat(message, " ");
-	message = strcat(message, reason_phrase);
-	message = strcat(message, "\n");
+	status = strcat(status, "HTTP/1.1 ");
+	status = strcat(status, charCode);
+	status = strcat(status, " ");
+	status = strcat(status, reason_phrase);
+	status = strcat(status, "\n");
 
-	fprintf(client, "%s", message);
-	free(message);
+	fprintf(client, "%s", status);
+	free(status);
 }
 
 void send_response(FILE * client , int code , const char * reason_phrase, const char * message_body){
-	send_status(client, code, reason_phrase);
-	char * message = malloc(256);
+
+	char * response = malloc(256);
 
 	int taille = strlen(message_body);
 	char tailleBody[1024];
 	sprintf(tailleBody, "%d", taille);
 
-	message = strcat(message, "Content-Type : text\\HTML\n");
-	message = strcat(message, "Content-Length : ");
-	message = strcat(message, tailleBody);
-	message = strcat(message, "\n\n");
-	message = strcat(message, message_body);
+	response = strcat(response, "Content-Length : ");
+	response = strcat(response, tailleBody);
+	response = strcat(response, "\r\n");
 
-	fprintf(client, "%s", message);
-	free(message);
+	printf("[Info] Envoi de la réponse ...\n");
+
+	send_status(client, code, reason_phrase);
+	fprintf(client, "%s", response);
+	fprintf(client, "%s", message_body);
+
+	printf("[Info] Réponse envoyée !\n");
+
+	free(response);
+}
+
+void send_file(FILE * client , int code , const char * reason_phrase, int fdFile){
+	char * response = malloc(256);
+
+	int taille = get_file_size(fdFile);
+	char tailleBody[1024];
+	sprintf(tailleBody, "%d", taille);
+
+	response = strcat(response, "Content-Type : text\\HTML\n");
+	response = strcat(response, "Content-Length : ");
+	response = strcat(response, tailleBody);
+	response = strcat(response, "\r\n");
+
+	printf("[Info] Envoi de la réponse ...\n");
+
+	send_status(client, code, reason_phrase);
+	fprintf(client, "%s", response);
+	
+	char * buf = malloc(1024);
+
+	while(read(fdFile, buf, 1024) != 0){
+		fprintf(client, "%s\n", buf);
+	}
+
+	printf("[Info] Réponse envoyée !\n");
+
+	free(response);
+}
+
+char * rewrite_url(char * url){
+	char * res = malloc(255);
+	int i = 0;
+	
+	while(*(url+i) != 0){
+		if(*(url+i) == '?'){
+			break;
+		} else {
+			*(res+i) = *(url+i);
+			i++;
+		}
+	}
+
+	url = res;
+	free(res);
+	return url;
+}
+
+int check_and_open ( const char * url , const char * document_root ){
+	char * pathname = malloc(255);
+	strcat(pathname, document_root);
+	strcat(pathname, url);
+
+	int fd = open(pathname, O_RDONLY);
+	if(fd == -1){
+		perror("check_and_open");
+		return -1;
+	}
+
+	free(pathname);
+	return fd;
+}
+
+int get_file_size(int fd){
+	struct stat {
+       dev_t     st_dev;     /* ID of device containing file */
+       ino_t     st_ino;     /* inode number */
+       mode_t    st_mode;    /* protection */
+       nlink_t   st_nlink;   /* number of hard links */
+       uid_t     st_uid;     /* user ID of owner */
+       gid_t     st_gid;     /* group ID of owner */
+       dev_t     st_rdev;    /* device ID (if special file) */
+       off_t     st_size;    /* total size, in bytes */
+       blksize_t st_blksize; /* blocksize for file system I/O */
+       blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
+       time_t    st_atime;   /* time of last access */
+       time_t    st_mtime;   /* time of last modification */
+       time_t    st_ctime;   /* time of last status change */
+    };
+
+    struct stat * buf = malloc(1024);
+
+    int res = fstat(fd, buf);
+
+    if(res == -1){
+    	perror("fstat");
+    	return -1;
+    }
+
+    int taille = buf->st_size;
+    free(buf);
+
+    return taille;
 }
