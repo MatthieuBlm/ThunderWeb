@@ -107,9 +107,10 @@ void traitement_client(int socket_client){
 		free(req);
 		return;
 	} else {
-		char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
+		//char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
 		
-		send_response(f, 200, "OK", motd);
+		send_file(f, 200, "OK", fdRequestedFile);
+		copy(fdRequestedFile, socket_client);
 	}
 
 	printf("[Info] Traitement terminé\n--------------------\n");
@@ -267,6 +268,7 @@ void send_status(FILE * client , int code , const char * reason_phrase){
 	status = strcat(status, reason_phrase);
 	status = strcat(status, "\n");
 
+	printf("%s", status);
 	fprintf(client, "%s", status);
 	free(status);
 }
@@ -284,7 +286,6 @@ void send_response(FILE * client , int code , const char * reason_phrase, const 
 	response = strcat(response, "\r\n");
 
 	printf("[Info] Envoi de la réponse ...\n");
-
 	send_status(client, code, reason_phrase);
 	fprintf(client, "%s", response);
 	fprintf(client, "%s", message_body);
@@ -309,13 +310,8 @@ void send_file(FILE * client , int code , const char * reason_phrase, int fdFile
 	printf("[Info] Envoi de la réponse ...\n");
 
 	send_status(client, code, reason_phrase);
+	printf("%s\n", response);
 	fprintf(client, "%s", response);
-	
-	char * buf = malloc(1024);
-
-	while(read(fdFile, buf, 1024) != 0){
-		fprintf(client, "%s\n", buf);
-	}
 
 	printf("[Info] Réponse envoyée !\n");
 
@@ -334,7 +330,6 @@ char * rewrite_url(char * url){
 			i++;
 		}
 	}
-
 	url = res;
 	free(res);
 	return url;
@@ -345,6 +340,7 @@ int check_and_open ( const char * url , const char * document_root ){
 	strcat(pathname, document_root);
 	strcat(pathname, url);
 
+	printf("%s\n", pathname);
 	int fd = open(pathname, O_RDONLY);
 	if(fd == -1){
 		perror("check_and_open");
@@ -356,21 +352,6 @@ int check_and_open ( const char * url , const char * document_root ){
 }
 
 int get_file_size(int fd){
-	struct stat {
-       dev_t     st_dev;     /* ID of device containing file */
-       ino_t     st_ino;     /* inode number */
-       mode_t    st_mode;    /* protection */
-       nlink_t   st_nlink;   /* number of hard links */
-       uid_t     st_uid;     /* user ID of owner */
-       gid_t     st_gid;     /* group ID of owner */
-       dev_t     st_rdev;    /* device ID (if special file) */
-       off_t     st_size;    /* total size, in bytes */
-       blksize_t st_blksize; /* blocksize for file system I/O */
-       blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
-       time_t    st_atime;   /* time of last access */
-       time_t    st_mtime;   /* time of last modification */
-       time_t    st_ctime;   /* time of last status change */
-    };
 
     struct stat * buf = malloc(1024);
 
@@ -385,4 +366,19 @@ int get_file_size(int fd){
     free(buf);
 
     return taille;
+}
+
+int copy(int in, int out){
+	int size = get_file_size(in);
+	char * buffer = malloc(size);
+	if(read(in, buffer, size) == -1){
+		perror("read copy");
+		return -1;
+	}
+	if(write(out, buffer, size) == -1){
+		perror("write copy");
+		return -1;
+	}
+
+	return 0;
 }
