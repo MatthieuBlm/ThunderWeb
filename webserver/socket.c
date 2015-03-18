@@ -98,11 +98,17 @@ void traitement_client(int socket_client){
 		exit(1);
 	} 
 
-	int fdRequestedFile = check_and_open(rewrite_url(req->url), "/home/infoetu/hembertr/public_html");
+	int fdRequestedFile = check_and_open(rewrite_url(req->url), "/home/infoetu/hembertr/public_html/");
 
 	if(fdRequestedFile == -1){
 		send_response(f, 404, "Not found", "404 Not found\r\n");
 		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
+		free(message);
+		free(req);
+		exit(1);
+	} else if(fdRequestedFile == -2){
+		send_response(f, 403, "Forbidden", "403 Forbidden\r\n");
+		printf("[Info] Traitement interrompu (403 Forbidden)\n--------------------\n");
 		free(message);
 		free(req);
 		exit(1);
@@ -317,7 +323,7 @@ char * rewrite_url(char * url){
 	if(strcmp(url, "/") == 0){
 		return "/index.html";
 	}
-
+	printf("%s\n", url);
 	return url;
 }
 
@@ -325,6 +331,13 @@ int check_and_open ( const char * url , const char * document_root ){
 	char * pathname = malloc(255);
 	strcat(pathname, document_root);
 	strcat(pathname, url);
+
+	printf("%s\n", pathname);
+
+	if(strstr(pathname, "passwd") != NULL){
+		return -2;
+	}
+
 	int fd = open(pathname, O_RDONLY);
 	if(fd == -1){
 		perror("check_and_open");
