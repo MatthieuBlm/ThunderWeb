@@ -95,7 +95,7 @@ void traitement_client(int socket_client){
 		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
 		free(message);
 		free(req);
-		return;
+		exit(1);
 	} 
 
 	int fdRequestedFile = check_and_open(rewrite_url(req->url), "/home/infoetu/hembertr/public_html");
@@ -105,12 +105,15 @@ void traitement_client(int socket_client){
 		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
 		free(message);
 		free(req);
-		return;
+		exit(1);
 	} else {
 		//char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
 		
 		send_file(f, 200, "OK", fdRequestedFile);
+		fflush(f);
+		printf("[Info] Envoi du fichier ...\n");
 		copy(fdRequestedFile, socket_client);
+		printf("[Info] Ficher envoyé !\n");
 	}
 
 	printf("[Info] Traitement terminé\n--------------------\n");
@@ -259,22 +262,12 @@ void skip_headers(FILE *client){
 }
 
 void send_status(FILE * client , int code , const char * reason_phrase){
-	char * status = malloc(255);
-	char charCode[3];
-	sprintf(charCode, "%d", code);
-	status = strcat(status, "HTTP/1.1 ");
-	status = strcat(status, charCode);
-	status = strcat(status, " ");
-	status = strcat(status, reason_phrase);
-	status = strcat(status, "\n");
-
-	printf("%s", status);
-	fprintf(client, "%s", status);
-	free(status);
+	printf("[Info] Envoi de la ligne de statut ...\n");
+	fprintf(client, "HTTP/1.1 %d %s\n", code, reason_phrase);
+	printf("[Info] Statut envoyée !\n");
 }
 
 void send_response(FILE * client , int code , const char * reason_phrase, const char * message_body){
-
 	char * response = malloc(256);
 
 	int taille = strlen(message_body);
@@ -296,26 +289,14 @@ void send_response(FILE * client , int code , const char * reason_phrase, const 
 }
 
 void send_file(FILE * client , int code , const char * reason_phrase, int fdFile){
-	char * response = malloc(256);
-
-	int taille = get_file_size(fdFile);
-	char tailleBody[1024];
-	sprintf(tailleBody, "%d", taille);
-
-	response = strcat(response, "Content-Type : text\\HTML\n");
-	response = strcat(response, "Content-Length : ");
-	response = strcat(response, tailleBody);
-	response = strcat(response, "\r\n");
-
 	printf("[Info] Envoi de la réponse ...\n");
 
 	send_status(client, code, reason_phrase);
-	printf("%s\n", response);
-	fprintf(client, "%s", response);
+	fprintf(client, "Content-Type : text\\HTML\r\n");
+	fprintf(client, "Content-Length : %d\r\n", get_file_size(fdFile));
+	fprintf(client, "\r\n");
 
 	printf("[Info] Réponse envoyée !\n");
-
-	free(response);
 }
 
 char * rewrite_url(char * url){
@@ -332,6 +313,11 @@ char * rewrite_url(char * url){
 	}
 	url = res;
 	free(res);
+
+	if(strcmp(url, "/") == 0){
+		return "/index.html";
+	}
+
 	return url;
 }
 
@@ -339,8 +325,6 @@ int check_and_open ( const char * url , const char * document_root ){
 	char * pathname = malloc(255);
 	strcat(pathname, document_root);
 	strcat(pathname, url);
-
-	printf("%s\n", pathname);
 	int fd = open(pathname, O_RDONLY);
 	if(fd == -1){
 		perror("check_and_open");
