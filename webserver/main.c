@@ -5,7 +5,11 @@ int main ()
 	printf("[Info] Démarrage du serveur\n");
 	int socket_serveur = creer_serveur(8080);
 
-	printf("[OK] Serveur démarré\n--------------------\n");
+	printf("[OK] Serveur démarré\n");
+
+	printf("[Info] Initialisation des statistiques\n");
+	init_stats();
+	printf("[OK] Statistiques initialisées\n--------------------\n");
 
 	while(1){
 		// Initialisation socket client
@@ -17,6 +21,7 @@ int main ()
 		} else if(fd_client_fork == 0) {
 			// Dans le processus fils
 			sleep(1);
+			(get_stats()->served_connections)++;
 
 			// Séquence de renvoi des informations du client vers le client
 			traitement_client(socket_client);

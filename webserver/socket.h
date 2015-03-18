@@ -11,6 +11,9 @@
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <sys/mman.h>
+
+#include "stats.h"
 
 #ifndef __SOCKET_H__
 #define __SOCKET_H__
@@ -19,6 +22,7 @@ enum http_method {
 	HTTP_GET ,
 	HTTP_UNSUPPORTED ,
 };
+
 typedef struct
 {
 	enum http_method method ;
@@ -68,6 +72,7 @@ void skip_headers(FILE *client);
 void send_status(FILE * client , int code , const char * reason_phrase);
 void send_response(FILE * client , int code , const char * reason_phrase, const char * message_body);
 void send_file(FILE * client , int code , const char * reason_phrase, int fdFile);
+void send_stats ( FILE * client );
 
 char * rewrite_url ( char * url );
 int check_and_open ( const char * url , const char * document_root );

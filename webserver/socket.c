@@ -86,13 +86,15 @@ void traitement_client(int socket_client){
 
 	// On traite l'information reçue
 	printf("[Info] Traitement de la requête\n");
-
+	(get_stats()->served_requests)++;
+	
 	http_request * req = malloc(128);
 	int ressource = parse_http_request(firstLine, req);
 
 	if(ressource == 0){
 		send_response(f, 400, "Bad request", "Bad request\r\n");
 		printf("[Info] Traitement interrompu (400 Bad request)\n--------------------\n");
+		(get_stats()->ko_400)++;
 		free(message);
 		free(req);
 		exit(1);
@@ -102,6 +104,7 @@ void traitement_client(int socket_client){
 
 	if(fdRequestedFile == -1){
 		send_response(f, 404, "Not found", "404 Not found\r\n");
+		(get_stats()->ko_404)++;
 		printf("[Info] Traitement interrompu (404 Not found)\n--------------------\n");
 		free(message);
 		free(req);
@@ -109,12 +112,16 @@ void traitement_client(int socket_client){
 	} else if(fdRequestedFile == -2){
 		send_response(f, 403, "Forbidden", "403 Forbidden\r\n");
 		printf("[Info] Traitement interrompu (403 Forbidden)\n--------------------\n");
+		(get_stats()->ko_403)++;
 		free(message);
 		free(req);
 		exit(1);
+	} else if(fdRequestedFile == 1) {
+		printf("[Info] Envoi des stats ...\n");
+		send_stats(f);
+		printf("[Info] Statistiques envoyés !\n");
 	} else {
-		//char * motd = "+-------------------------------------+\n| Bonjour et bienvenue sur ThunderWeb | \n+-------------------------------------+\r\n";
-		
+		(get_stats()->ok_200)++;
 		send_file(f, 200, "OK", fdRequestedFile);
 		fflush(f);
 		printf("[Info] Envoi du fichier ...\n");
@@ -305,6 +312,16 @@ void send_file(FILE * client , int code , const char * reason_phrase, int fdFile
 	printf("[Info] Réponse envoyée !\n");
 }
 
+void send_stats ( FILE * client ){
+	fprintf(client, "Statistiques :\r\n");
+	fprintf(client, "Connexions : %d\r\n", get_stats()->served_connections);
+	fprintf(client, "Requetes : %d\r\n", get_stats()->served_requests);
+	fprintf(client, "200 : %d\r\n", get_stats()->ok_200);
+	fprintf(client, "400 : %d\r\n", get_stats()->ko_400);
+	fprintf(client, "403 : %d\r\n", get_stats()->ko_403);
+	fprintf(client, "404 : %d\r\n", get_stats()->ko_404);
+}
+
 char * rewrite_url(char * url){
 	char * res = malloc(255);
 	int i = 0;
@@ -323,6 +340,7 @@ char * rewrite_url(char * url){
 	if(strcmp(url, "/") == 0){
 		return "/index.html";
 	}
+
 	printf("%s\n", url);
 	return url;
 }
@@ -334,8 +352,12 @@ int check_and_open ( const char * url , const char * document_root ){
 
 	printf("%s\n", pathname);
 
-	if(strstr(pathname, "passwd") != NULL){
+	if(strstr(pathname, "..") != NULL){
 		return -2;
+	}
+
+	if(strcmp(url, "/stats") == 0){
+		return 1;
 	}
 
 	int fd = open(pathname, O_RDONLY);
